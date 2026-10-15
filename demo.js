@@ -15,7 +15,7 @@
 
   window.fetch = async (input, opt) => {
     const url = typeof input === 'string' ? input : (input && input.url) || '';
-    if (!url.startsWith('/api/') && !url.startsWith('/audio/')) return realFetch(input, opt);
+    if (!url.startsWith('/api/') && !url.startsWith('/audio/') && !url.startsWith('/raudio/')) return realFetch(input, opt);
     const u = new URL(url, 'http://demo');
     const q = (k) => u.searchParams.get(k) || '';
     const method = ((opt && opt.method) || 'GET').toUpperCase();
@@ -24,6 +24,7 @@
     if (method !== 'GET') {
       if (u.pathname === '/api/save') return reply({ ok: true, saved_at: 'demo', n_changed: 0, rev: 1 });
       if (u.pathname === '/api/grid') return reply({ ok: true });
+      if (u.pathname === '/api/regen/review') return reply({ ok: true, at: 'demo' });
       return reply({ error: local('演示版不能重新识别或改网格，这些只在本机的标注页里能用', 'Recomputing and grid changes only work in the local label page, not in this demo') }, 400);
     }
     if (u.pathname === '/api/library') return fileOr('data/library.json', () => reply({ error: 'library' }, 500));
@@ -35,6 +36,13 @@
     }
     if (u.pathname === '/api/peaks') return fileOr(`data/peaks/${seg(c)}/${seg(id)}.json`, () => reply({ rate: 0, stems: {} }));
     if (u.pathname === '/api/reextract') return reply({ state: 'idle' });
+    // 第二个分区：重生成结果
+    if (u.pathname === '/api/regen/index') return fileOr('data/regen/index.json', () => reply({ sessions: [], built_at: null }));
+    if (u.pathname === '/api/regen/session') return fileOr(`data/regen/session/${seg(id)}.json`, () => reply({ error: 'no session' }, 404));
+    if (u.pathname.startsWith('/raudio/')) {
+      const rest = url.slice('/raudio/'.length).replace(/\.(flac|wav|mp3|ogg)$/i, '.ogg');
+      return realFetch('raudio/' + rest);
+    }
     if (u.pathname.startsWith('/audio/')) {
       const parts = url.slice('/audio/'.length).split('/');
       if (parts.length >= 3 && AUDIO.has(decodeURIComponent(parts[0]) + '/' + decodeURIComponent(parts[1]))) {

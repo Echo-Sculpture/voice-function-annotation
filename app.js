@@ -1,6 +1,7 @@
 /* 声部功能识别：标注核对工作台。无依赖，全部在浏览器里跑。
    数据：GET /api/library、/api/song?c=&id=、/api/peaks?c=&id=，POST /api/save?c=&id=，音频 /audio/<c>/<id>/<文件>
          POST /api/grid?c=&id=（存小节标尺的设置）、POST /api/reextract?c=&id=（按网格重新识别这首歌）、GET /api/reextract?c=&id=（进度）
+         GET /api/history?c=&id=、/api/history/version?c=&id=&v=&keep=，POST /api/history/restore?c=&id=（历史版本，2026-10-16）
    画法：每条分轨一行，每一拍一格。功能既用颜色、也用高度表示（主旋律最高，和弦伴奏最矮，休止为空），
    所以分不清颜色也能看懂。配色用 dataviz 的校验脚本在深色底上逐对验证过，改颜色要重新校验。
    界面文字全部在 STR 里，中英两套。 */
@@ -101,6 +102,23 @@
       reSame: (n) => (n ? `重新识别完成。自动识别的结果有 ${n} 拍和原来不同。` : '重新识别完成，结果和原来一样。'),
       reMoved: (n) => `已按新网格重新识别。你改过的地方按时间搬到了新网格上，现在是 ${n} 格。`, reNew: '已按新网格重新识别。',
       reFail: (m) => `重新识别没成功：${m}`, reNeedSave: '刚才的修改还没存上。先解决保存的问题，再重新识别。',
+      histBtn: '历史版本', histTip: '这首歌以前的规则版本、你点过“看完了”的版本：可以只看一看，也可以回退过去。回退前会先备份，随时能撤销',
+      histHead: '历史版本', histClose: '关闭', histLoading: '正在读历史版本…', histFail: (m) => `读不到历史版本：${m}`,
+      histKeep: (n) => `回退到规则版本时，留着我改过的 ${n} 格（盖在那一版上面）`,
+      histRules: '规则版本', histDones: '你点过“看完了”的版本', histNoDone: '这首歌还没有点过“看完了”的版本。',
+      histRule: (n) => (n ? `第 ${n} 版规则` : '旧的自动结果（没记版本号）'),
+      histKind: { current: '现在用的', first: '最初的自动结果', used: '页面上用过', try: '试判过，没上过页面' },
+      histDiff: (n) => (n ? `和现在不同 ${n} 格` : '和现在一样'), histDoneAt: (t) => `${t} 点的“看完了”`, histDoneN: (n) => `改了 ${n} 格`,
+      histNowTag: '现在就是这一版', histView: '看一看', histRestore: '回退到这一版',
+      histUndo: '撤销上一次回退', histUndoNote: (w, t, act) => (act === 'undo' ? `上一次：${t} 撤销了一次回退（再点就是撤销这次撤销）` : `上一次：${t} 回退到${w}`), histUndoAsk: '撤销上一次回退，回到回退之前的样子？',
+      histAt: (kind, t) => (kind === 'current' ? `${t} 起用` : kind === 'try' ? `${t} 试判` : `用到 ${t}`),
+      histFoot: '“看一看”不改任何东西。回退会先把现在的样子备份，回退以后这里会出现“撤销上一次回退”。按小节的结果会跟着重做。',
+      histPreview: (t) => `正在看：${t}`, histPreviewKeep: '（留着你改过的格子）', histPreviewPure: '（规则原样，不含你的改动）',
+      histBack: '回到现在', histBusy: '正在看历史版本，不能改。点“回到现在”再改，或者直接回退到这一版。',
+      histConfirm: (t) => `回退到：${t}？\n\n现在的样子会先备份，回退以后可以在“历史版本”里撤销。`,
+      histConfirmDrop: (n) => `\n\n没勾“留着我改过的格子”：你在这首歌上改过的 ${n} 格这次不接上去（备份里还有）。`,
+      histDone: (w) => `已回退到${w}。`, histUndone: '已撤销上一次回退。', histRestoreFail: (m) => `没回退成功：${m}`,
+      tipVer: (s) => `这一版：${s}`, tipCur: (s) => `（现在：${s}）`,
       gridHead: '拍速与网格',
       gridSrcAuto: '拍点：<b>自动识别</b>', gridSrcAutoX2: '拍点：<b>自动识别，再加倍</b>', gridSrcAutoHalf: '拍点：<b>自动识别，再减半</b>',
       gridSrcManual: '拍点：<b>手动的匀速网格</b>', gridNoPreview: '自动识别的拍点要重新识别以后才画得出来。',
@@ -201,6 +219,23 @@
       reSame: (n) => (n ? `Recognition finished. ${n} beat${n === 1 ? '' : 's'} of the automatic result changed.` : 'Recognition finished. The result is the same as before.'),
       reMoved: (n) => `Recognised on the new grid. Your edits were moved by time onto it: ${n} cell${n === 1 ? '' : 's'} now.`, reNew: 'Recognised on the new grid.',
       reFail: (m) => `Recognition failed: ${m}`, reNeedSave: 'Your last edits are not saved yet. Sort out saving first, then re-run.',
+      histBtn: 'History', histTip: 'Earlier rule versions of this song and the versions you marked “finished”: look at one, or go back to it. The current state is backed up first and can be restored',
+      histHead: 'History', histClose: 'Close', histLoading: 'Reading the history…', histFail: (m) => `Could not read the history: ${m}`,
+      histKeep: (n) => `When going back to a rule version, keep my ${n} edited cell${n === 1 ? '' : 's'} on top of it`,
+      histRules: 'Rule versions', histDones: 'Versions you marked “finished”', histNoDone: 'This song has no version marked “finished” yet.',
+      histRule: (n) => (n ? `Rule version ${n}` : 'Older automatic result (no version number)'),
+      histKind: { current: 'in use now', first: 'first automatic result', used: 'used on this page before', try: 'trial run, never on the page' },
+      histDiff: (n) => (n ? `${n} cell${n === 1 ? '' : 's'} differ from now` : 'same as now'), histDoneAt: (t) => `Marked “finished” at ${t}`, histDoneN: (n) => `${n} cell${n === 1 ? '' : 's'} edited`,
+      histNowTag: 'this is what you see now', histView: 'Look', histRestore: 'Go back to this',
+      histUndo: 'Undo the last go-back', histUndoNote: (w, t, act) => (act === 'undo' ? `Last time (${t}) you undid a go-back (pressing this undoes that undo)` : `Last time (${t}) you went back to: ${w}`), histUndoAsk: 'Undo the last go-back and return to the state before it?',
+      histAt: (kind, t) => (kind === 'current' ? `in use since ${t}` : kind === 'try' ? `trial run ${t}` : `used until ${t}`),
+      histFoot: '“Look” changes nothing. Going back first backs up the current state; afterwards “Undo the last go-back” appears here. The bar view is redone to match.',
+      histPreview: (t) => `Looking at: ${t}`, histPreviewKeep: '(with your edits on top)', histPreviewPure: '(the rule as it was, without your edits)',
+      histBack: 'Back to now', histBusy: 'You are looking at an earlier version and cannot edit it. Press “Back to now” to edit, or go back to this version.',
+      histConfirm: (t) => `Go back to: ${t}?\n\nThe current state is backed up first; you can undo this under “History”.`,
+      histConfirmDrop: (n) => `\n\n“Keep my edited cells” is off: your ${n} edited cell${n === 1 ? '' : 's'} on this song will not be carried over this time (they stay in the backup).`,
+      histDone: (w) => `Went back to ${w}.`, histUndone: 'The last go-back was undone.', histRestoreFail: (m) => `Could not go back: ${m}`,
+      tipVer: (s) => `This version: ${s}`, tipCur: (s) => `(now: ${s})`,
       gridHead: 'Tempo and grid',
       gridSrcAuto: 'Beats: <b>detected automatically</b>', gridSrcAutoX2: 'Beats: <b>detected, then doubled</b>', gridSrcAutoHalf: 'Beats: <b>detected, then halved</b>',
       gridSrcManual: 'Beats: <b>manual, even grid</b>', gridNoPreview: 'The detected beats can only be drawn after re-running.',
@@ -959,6 +994,7 @@
     job: null,                                // 正在重新识别（或保存网格）时的进度
     gridErr: '', gridSaved: '', pendingShift: 0,      // 网格上一次没存上的原因；上一次存好的时刻；正在存的那一瞬间又挪的量（存完接着挪）
     align: null,                              // “对齐”模式下正在拖：起点的位置和当时的网格
+    preview: null,                            // 正在“看一看”历史版本：{ song, v, it, keep, diff, orig（现在的标记） }
     hover: null, stroke: null, scrub: false, add: false, addKey: false, undo: [], redo: [], dirty: true, ringDirty: true, flash: null, uStarts: [],
     save: 'idle', saveErr: '', saveCode: '', saveStatus: 0, detached: false, lastBeat: -1, lvlCss: -1, lastJump: -1, holdFollow: 0, wasPlaying: false, wasLoading: 0 };
   const tl = $('#tl'), ringCv = $('#ring'), lanesEl = $('#lanes');
@@ -1077,6 +1113,7 @@
   }
   function setMode(m) {
     if (m === 'align' && st.song && st.song.view === 'bar') m = 'point';      // 按小节时没有对齐（网格只在按拍里改）
+    if (st.preview && (m === 'edit' || m === 'align')) { toast(T('histBusy'), 4000); m = 'point'; }      // 看历史版本时不能改
     st.mode = m;
     $('#modePoint').setAttribute('aria-pressed', m === 'point'); $('#modeEdit').setAttribute('aria-pressed', m === 'edit'); $('#modeListen').setAttribute('aria-pressed', m === 'listen');
     $('#modeAlign').setAttribute('aria-pressed', m === 'align');
@@ -1380,6 +1417,7 @@
   }
   function labelsChanged() { st.lastBeat = -1; refreshDerived(); scheduleSave(); }
   function undoRedo(from, to, field) {
+    if (st.preview) return;
     if (st.stroke || (st.song && st.song.draft)) return;      // 网格有没应用的改动时，格子对不上，先不撤销
     const e = from.pop(); if (!e) return;
     const row = st.song.rows[e.ri];
@@ -1415,7 +1453,8 @@
   // 服务端发现对不上就拒收并把内容另存一份，不会悄悄盖掉别处的修改。
   function payloadOf(s, extra) {
     // 网格有草稿时页面上是预览；存的永远是没动过的原件
-    const labels = {}; s.rows.forEach((r, i) => { if (r.cur) labels[r.name] = Array.from(s.live ? s.live.rows[i].cur : r.cur); });
+    const pv = st.preview && st.preview.song === s ? st.preview.orig : null;      // 正在看历史版本：存的是现在的标记，不是屏幕上那一版
+    const labels = {}; s.rows.forEach((r, i) => { if (r.cur) labels[r.name] = Array.from(pv && pv[i] ? pv[i] : s.live ? s.live.rows[i].cur : r.cur); });
     return JSON.stringify(Object.assign({ labels, done: s.done, note: s.note, base_rev: s.rev, auto_fp: s.autoFp, writer: WRITER }, extra || {}));
   }
   async function saveNow(force) {
@@ -1495,6 +1534,7 @@
     if (s.view === 'bar' && metro.on) setMetro(false);      // 节拍器、网格只在按拍里
     st.song = s; st.solo = new Set(); st.undo = []; st.redo = []; st.hover = null; st.stroke = null; st.scrub = false; st.flash = null;
     st.save = 'idle'; st.saveErr = ''; st.saveCode = ''; st.lastJump = -1; st.holdFollow = 0; st.detached = false;
+    dropPreview(); hist.data = null;
     st.job = null; st.align = null; gridUi.close(); lockEditing(false);
     clearTimeout(gridTimer); st.gridErr = ''; st.gridSaved = ''; st.pendingShift = 0;
     engine.reset(s.duration);
@@ -1526,13 +1566,14 @@
     if (!st.song) return true;
     if (!(await flushSave()) && !window.confirm(T('leaveUnsaved'))) return false;
     clearTimeout(saveTimer); clearTimeout(gridTimer); st.song = null; st.job = null; engine.reset(0); output.close(); gridUi.close(); lockEditing(false);
+    dropPreview(); hist.data = null;
     document.documentElement.style.setProperty('--lvl', '0'); st.lvlCss = -1;
     return true;
   }
 
   // ---- 拍速与网格的菜单
   const gridUi = {
-    open() { $('#gridMenu').hidden = false; $('#bpmBtn').setAttribute('aria-expanded', 'true'); renderGrid(); },
+    open() { if (st.preview) { toast(T('histBusy'), 4000); return; } $('#gridMenu').hidden = false; $('#bpmBtn').setAttribute('aria-expanded', 'true'); renderGrid(); },
     close() { $('#gridMenu').hidden = true; $('#bpmBtn').setAttribute('aria-expanded', 'false'); },
   };
   function renderGrid() {
@@ -1696,6 +1737,7 @@
   // ---- 重新识别这首歌：服务端在后台用提取器算（一般十几秒），这里隔一会儿问一次进度，算完把新结果换进来
   async function reextract() {
     const s = st.song; if (!s || st.job) return;
+    if (st.preview) { toast(T('histBusy'), 4000); return; }
     engine.pause();
     if (!(await flushSave())) { toast(T('reNeedSave'), 6000); return; }
     if (st.song !== s || st.job) return;
@@ -1730,6 +1772,7 @@
     st.solo.forEach((i) => { const k = old.rows[i] ? s.rows.findIndex((r) => r.name === old.rows[i].name) : -1; if (k >= 0) solo.add(k); });
     s.gridRev = old.gridRev + 1;                 // 节拍器靠它知道网格换过了
     st.song = s; st.solo = solo; st.undo = []; st.redo = []; st.hover = null; st.stroke = null; st.scrub = false; st.flash = null; st.lastJump = -1;
+    dropPreview();
     if (!keepAlign) st.align = null;             // 只是把刚存好的网格换进来：正拖着的那一下不打断
     st.save = 'idle'; st.saveErr = ''; st.saveCode = '';
     $('#note').value = s.note; $('#done').setAttribute('aria-pressed', s.done);
@@ -1755,7 +1798,11 @@
     if (!h || h.zone !== 'lane' || h.pre || st.stroke || st.scrub) { tip.hidden = true; return; }
     const r = s.rows[h.ri], b = h.beat;
     let html = `<b>${esc(stemName(r))}</b> <i>${esc(T('tipBeat', ...barBeat(s, b), b + 1, fmt1(s.edges[b]), fmt1(s.edges[b + 1])))}</i><br>`;
-    if (r.cur) {
+    const po = st.preview && st.preview.song === s ? st.preview.orig[h.ri] : null;
+    if (r.cur && po) {                                     // 看历史版本：这一版是什么，现在是什么
+      html += esc(T('tipVer', fnName(r.cur[b])));
+      if (lv(r.cur[b]) !== lv(po[b])) html += ` <i>${esc(T('tipCur', fnName(po[b])))}</i>`;
+    } else if (r.cur) {
       html += esc(T('tipNow', fnName(r.cur[b])));
       if (lv(r.cur[b]) !== lv(r.auto[b])) html += ` <i>${esc(T('tipWas', fnName(r.auto[b])))}</i>`;
       if (r.unstable[b]) html += `<br><i>${esc(T('tipUnsure'))}</i>`;
@@ -1790,6 +1837,7 @@
     }
     try { tl.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件没有指针可抓 */ }
     if (row && mode === 'edit' && row.cur) {
+      if (st.preview) { toast(T('histBusy'), 4000); return; }
       if ((st.add || e.shiftKey) && !s.canDual) { toast(T('addNeedsRestart'), 12000); return; }      // 服务还是旧的，存不下双重功能：这一笔不画
       st.stroke = { song: s, ri: h.ri, last: h.beat, before: new Map(), add: st.add || e.shiftKey };      // add：这一笔是“再加一个功能”
       paint(h.ri, h.beat, h.beat); showTip(null);
@@ -1860,6 +1908,104 @@
   ringCv.addEventListener('pointermove', (e) => { if (ringDrag) ringSeek(e, true); });
   for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) ringCv.addEventListener(ev, () => { ringDrag = false; });
 
+  // ---- 历史版本（2026-10-16）：这首歌以前的规则版本、他点过“看完了”的版本。可以只看一看（时间线上临时换成那一版，不能改），也可以回退。
+  // 回退由服务端做：先把现在的自动结果和修改照 fn_swap.py 的命名备份，再换上去；之后列表里有“撤销上一次回退”。
+  // 看一看的时候 st.preview.orig 收着现在的标记：保存（包括关页面时的补发）一律用它，不用画在屏幕上的那一版。
+  const hist = { data: null, keep: true };
+  const histItemOf = (id) => (hist.data ? [...hist.data.rules, ...hist.data.dones].find((x) => x.id === id) : null);
+  const histTitle = (it) => (it.kind === 'done' ? T('histDoneAt', it.at) : T('histRule', it.rule) + ' · ' + T('histKind')[it.kind]);
+  async function openHistory() {
+    const s = st.song; if (!s || s.view === 'bar') return;
+    if (st.job || s.draft) { toast(T(st.job && st.job.kind !== 'regrid' ? 'gridBusy' : 'gridPending'), 4000); return; }
+    $('#histWrap').hidden = false; $('#histTitle').textContent = T('histHead') + ' · ' + s.title;
+    $('#histBody').innerHTML = `<p class="sub dim">${esc(T('histLoading'))}</p>`;
+    let d;
+    try { d = await api(`/api/history?c=${s.c}&id=${s.id}`); }
+    catch (err) { if (st.song === s) $('#histBody').innerHTML = `<p class="sub">${esc(T('histFail', err.message))}</p>`; return; }
+    if (st.song !== s) return;
+    hist.data = d; renderHistory();
+  }
+  function closeHistory() { $('#histWrap').hidden = true; }
+  function renderHistory() {
+    const d = hist.data, s = st.song; if (!d || !s) return;
+    $('#histTitle').textContent = T('histHead') + ' · ' + s.title;
+    const keep = d.has_edits && hist.keep, pv = st.preview ? st.preview.v : '';
+    const item = (it) => {
+      const diff = it.kind !== 'done' && keep ? it.diff_keep : it.diff;
+      const sub = it.kind === 'done' ? [it.n_changed != null ? T('histDoneN', it.n_changed) : '', T('histDiff', diff)] : [it.at ? T('histAt', it.kind, it.at) : '', T('histDiff', diff)];
+      return `<div class="histItem${diff ? '' : ' cur'}"><div><b>${esc(it.kind === 'done' ? T('histDoneAt', it.at) : T('histRule', it.rule))}</b>`
+        + (it.kind !== 'done' ? ` <span class="pill">${esc(T('histKind')[it.kind])}</span>` : '')
+        + `<p class="sub">${esc(sub.filter(Boolean).join(' · '))}${diff ? '' : ' · ' + esc(T('histNowTag'))}</p></div>`
+        + `<div class="acts">${diff ? `<button class="chip" data-hv="${esc(it.id)}" aria-pressed="${pv === it.id}">${esc(T('histView'))}</button><button class="chip go" data-hr="${esc(it.id)}">${esc(T('histRestore'))}</button>` : ''}</div></div>`;
+    };
+    $('#histBody').innerHTML =
+      (d.undo ? `<div class="histItem"><div><b>${esc(T('histUndo'))}</b><p class="sub">${esc(T('histUndoNote', d.undo.what, d.undo.at, d.undo.act))}</p></div><div class="acts"><button class="chip go" data-hr="undo">${esc(T('histUndo'))}</button></div></div>` : '')
+      + (d.has_edits ? `<label class="histKeep"><input type="checkbox" id="histKeep"${hist.keep ? ' checked' : ''}><span>${esc(T('histKeep', d.n_edits))}</span></label>` : '')
+      + `<div><h5>${esc(T('histRules'))}</h5>${d.rules.map(item).join('')}</div>`
+      + `<div><h5>${esc(T('histDones'))}</h5>${d.dones.length ? d.dones.map(item).join('') : `<p class="sub dim">${esc(T('histNoDone'))}</p>`}</div>`;
+  }
+  async function previewVersion(id) {
+    const s = st.song, d = hist.data, it = histItemOf(id); if (!s || !d || !it) return;
+    if (st.job || s.draft) { toast(T(st.job && st.job.kind !== 'regrid' ? 'gridBusy' : 'gridPending'), 4000); return; }
+    const keep = it.kind !== 'done' && d.has_edits && hist.keep;
+    let r;
+    try { r = await api(`/api/history/version?c=${s.c}&id=${s.id}&v=${encodeURIComponent(id)}&keep=${keep ? 1 : 0}`); }
+    catch (err) { toast(T('histFail', err.message), 6000); return; }
+    if (st.song !== s) return;
+    if (st.stroke) endStroke();
+    if (!st.preview) st.preview = { song: s, orig: s.rows.map((row) => (row.cur ? Int8Array.from(row.cur) : null)) };
+    Object.assign(st.preview, { v: id, it, keep, diff: keep ? it.diff_keep : it.diff });
+    s.rows.forEach((row) => { if (row.cur && Array.isArray(r.labels[row.name]) && r.labels[row.name].length === s.n) row.cur = Int8Array.from(r.labels[row.name]); });
+    if (st.mode === 'edit' || st.mode === 'align') setMode('point');
+    lockEditing(true); closeHistory(); showPreviewBar(); refreshDerived(); showTip(null);
+  }
+  function showPreviewBar() {
+    const p = st.preview; if (!p) { $('#histBar').hidden = true; return; }
+    $('#histBarText').innerHTML = `<b>${esc(T('histPreview', histTitle(p.it)))}</b> ${esc(p.it.kind === 'done' ? '' : p.keep ? T('histPreviewKeep') : T('histPreviewPure'))} · ${esc(T('histDiff', p.diff))}`;
+    $('#histBar').hidden = false;
+  }
+  function endPreview() {
+    const p = st.preview; st.preview = null; $('#histBar').hidden = true;
+    if (!p || p.song !== st.song) return;
+    p.song.rows.forEach((row, i) => { if (p.orig[i]) row.cur = p.orig[i]; });
+    lockEditing(!!st.job); refreshDerived(); showTip(null);
+  }
+  function dropPreview() { st.preview = null; $('#histBar').hidden = true; closeHistory(); }      // 换歌、重新载入时：屏幕上的整个换掉，不用还原
+  async function restoreVersion(id) {
+    const s = st.song, d = hist.data; if (!s || !d) return;
+    const it = id === 'undo' ? null : histItemOf(id);
+    if (id !== 'undo' && !it) return;
+    const keep = !!(it && it.kind !== 'done' && d.has_edits && hist.keep);
+    let msg = id === 'undo' ? T('histUndoAsk') : T('histConfirm', histTitle(it));
+    if (it && it.kind !== 'done' && d.has_edits && !hist.keep) msg += T('histConfirmDrop', d.n_edits);
+    if (!window.confirm(msg)) return;
+    if (st.preview) endPreview();
+    if (!(await flushSave())) { toast(T('reNeedSave'), 6000); return; }
+    if (st.song !== s || st.job) return;
+    let r;
+    try { r = await api(`/api/history/restore?c=${s.c}&id=${s.id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ v: id, keep }) }); }
+    catch (err) { toast(T('histRestoreFail', err.message), 8000); return; }
+    closeHistory(); hist.data = null;
+    if (st.song !== s) return;
+    await reloadSong(s, null);
+    toast(id === 'undo' ? T('histUndone') : T('histDone', r.what), 7000);
+  }
+  $('#histBtn').addEventListener('click', openHistory);
+  $('#histClose').addEventListener('click', closeHistory);
+  $('#histWrap').addEventListener('click', (e) => {
+    if (e.target.id === 'histWrap') { closeHistory(); return; }
+    const v = e.target.closest('[data-hv]'); if (v) { previewVersion(v.dataset.hv); return; }
+    const r = e.target.closest('[data-hr]'); if (r) restoreVersion(r.dataset.hr);
+  });
+  $('#histWrap').addEventListener('change', (e) => {
+    if (e.target.id !== 'histKeep') return;
+    hist.keep = e.target.checked;
+    if (st.preview && st.preview.it.kind !== 'done') endPreview();      // 正在看的那一版跟着这个勾变了：先收起来，免得看到的和回退的不一样
+    renderHistory();
+  });
+  $('#histBarBack').addEventListener('click', () => endPreview());
+  $('#histBarRestore').addEventListener('click', () => { if (st.preview) restoreVersion(st.preview.v); });
+
   // ---- 按钮与键盘
   function reveal(t) {            // 把某个时间点带进画面；画面一动，指针下面的提示就过期了，收掉
     const W = viewW(), x = X(t);
@@ -1883,7 +2029,7 @@
     if (l === LANG) return;
     LANG = l; store.set('fn-lang', l);
     applyStatic(); renderLegend(); output.label();
-    if (st.song) renderSongTexts(); else { document.title = T('docTitle'); if (home.lib) { const col = renderHome(); if (col) col.songs.forEach((s) => paintHomeRing(col.id, s.id)); } }
+    if (st.song) { renderSongTexts(); showPreviewBar(); if (!$('#histWrap').hidden) renderHistory(); } else { document.title = T('docTitle'); if (home.lib) { const col = renderHome(); if (col) col.songs.forEach((s) => paintHomeRing(col.id, s.id)); } }
   }
   document.addEventListener('click', (e) => { const b = e.target.closest('.lang button'); if (b) setLang(b.dataset.lang); });
   function setLevel(n) {            // 换一级 / 二级：只重画，不动任何标注
@@ -1960,7 +2106,7 @@
     else if (k === 'f') $('#follow').click();
     else if (k === '[') jumpUnstable(-1);
     else if (k === ']') jumpUnstable(1);
-    else if (k === 'escape') { if (!$('#gridMenu').hidden) gridUi.close(); else if (!$('#outMenu').hidden) output.close(); else if (st.solo.size) { st.solo = new Set(); applySolo(); } else setMode('point'); }
+    else if (k === 'escape') { if (!$('#histWrap').hidden) closeHistory(); else if (!$('#gridMenu').hidden) gridUi.close(); else if (!$('#outMenu').hidden) output.close(); else if (st.solo.size) { st.solo = new Set(); applySolo(); } else setMode('point'); }
     else if (k === 'arrowleft' || k === 'arrowright') {
       e.preventDefault();
       if (st.mode === 'align') {                         // 对齐：方向键把整首歌的声音挪 5 毫秒（按住 Shift 是 20 毫秒）

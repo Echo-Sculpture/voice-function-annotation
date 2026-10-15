@@ -250,6 +250,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 #reState{text-transform:none;letter-spacing:.02em;line-height:1.5}
 .toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:20;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13px;box-shadow:0 14px 40px rgba(0,0,0,.5);max-width:86vw}
 
+/* 历史版本（2026-10-16） */
+.histWrap{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:grid;place-items:center;padding:24px}
+.histPanel{width:min(660px,100%);max-height:86vh;overflow:auto;background:#161618;border:1px solid var(--line2);border-radius:18px;padding:18px 20px 16px;box-shadow:0 24px 70px rgba(0,0,0,.6);display:grid;gap:14px}
+.histTop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.histTop h3{font-family:var(--name);font-weight:500;font-size:20px;line-height:1.3}
+.histTop .x{flex:none;width:30px;height:30px;border-radius:50%;color:var(--ink2);font-size:18px;line-height:1;transition:color .25s,background .25s}
+.histTop .x:hover{color:var(--ink);background:rgba(243,239,232,.1)}
+.histPanel h5{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink3);font-weight:400;margin:2px 0 7px}
+.histItem{display:flex;gap:10px 14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:6px}
+.histItem.cur{border-color:var(--line2);background:rgba(243,239,232,.05)}
+.histItem b{font-family:var(--name);font-weight:500;font-size:15px}
+.histItem .pill{margin-left:4px}
+.histPanel .sub{font-size:12px;line-height:1.6;color:var(--ink2);margin-top:2px}
+.histItem .acts{display:flex;gap:6px}
+.histItem .chip,.histBar .chip{font-size:12px;padding:5px 12px}
+.histItem .chip.go,.histBar .chip.go{background:var(--lead);border-color:var(--lead);color:var(--bg)}
+.histItem .chip.go:hover,.histBar .chip.go:hover{border-color:var(--ink)}
+.histKeep{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:var(--ink2);line-height:1.55;cursor:pointer}
+.histKeep input{margin-top:3px;accent-color:var(--lead)}
+.histFoot{font-size:11.5px;line-height:1.65}
+.histBar{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:9px 18px;border-bottom:1px solid var(--lead);background:rgba(238,94,35,.13);font-size:13px;color:var(--ink2)}
+.histBar b{font-family:var(--name);font-weight:500;color:var(--ink)}
+
 @media (max-width:1080px){
   #editor{grid-template-columns:250px minmax(0,1fr)}
   .side{padding:16px 16px 20px}
@@ -282,7 +305,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 <main id="home" class="view">
   <header class="top">
     <span class="l"><span class="mono">FN Studio</span>
-      <nav class="sections" data-t-aria-label="secAria"><a href="./" aria-current="page" data-t="secLabels"></a></nav></span>
+      <nav class="sections" data-t-aria-label="secAria"><a href="./" aria-current="page" data-t="secLabels"></a><a href="regen.html" data-t="secRegen"></a></nav></span>
     <span class="r"><span class="mono dim" id="homeCount"></span><span class="lvl" role="group" data-t-title="levelTip"><button data-level="1" data-t="level1">一级</button><button data-level="2" data-t="level2">二级</button></span><span class="lang" role="group" aria-label="Language"><button data-lang="zh">中</button><button data-lang="en">EN</button></span></span>
   </header>
   <section class="hero">
@@ -316,6 +339,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
         <button class="chip go" id="applyBtn" data-t="applyBtn" data-t-title="applyTip" hidden></button>
         <button class="chip" id="dropBtn" data-t="dropBtn" hidden></button>
         <button class="chip beatOnly" id="reBtn" data-t-title="reTip"><span id="reLabel"></span></button>
+        <button class="chip beatOnly" id="histBtn" data-t="histBtn" data-t-title="histTip"></button>
         <span class="mono dim" id="reState" role="status"></span>
       </div>
     </div>
@@ -336,6 +360,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
     </div>
   </aside>
   <section class="stage">
+    <div class="histBar" id="histBar" hidden role="status"><span id="histBarText"></span><span class="grow"></span><button class="chip go" id="histBarRestore" data-t="histRestore"></button><button class="chip" id="histBarBack" data-t="histBack"></button></div>
     <div class="lanes" id="lanes">
       <div class="heads" id="heads"></div>
       <canvas id="tl" data-t-aria-label="tlAria"></canvas>
@@ -376,6 +401,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
   </section>
 </main>
 
+<div class="histWrap" id="histWrap" hidden><div class="histPanel" role="dialog" aria-modal="true" aria-labelledby="histTitle">
+  <div class="histTop"><h3 id="histTitle"></h3><button class="x" id="histClose" type="button" data-t-title="histClose" data-t-aria-label="histClose">×</button></div>
+  <div id="histBody"></div>
+  <p class="histFoot dim" data-t="histFoot"></p>
+</div></div>
 <div class="toast" id="toast" hidden role="status"></div>
 <script src="demo.js"></script>
 <script src="app.js"></script>

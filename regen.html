@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>重生成结果 · 声部功能识别</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@500;900&display=swap" rel="stylesheet">
+<style>
+/* 外观和标注核对那一页是同一套：深色底、衬线大标题、同样的颜色。颜色没有新增，改颜色要重新跑 dataviz 的校验。 */
+:root{
+  --bg:#0d0d0e; --panel:rgba(13,13,14,.62); --ink:#f3efe8; --ink2:rgba(243,239,232,.66); --ink3:rgba(243,239,232,.40);
+  --line:rgba(243,239,232,.11); --line2:rgba(243,239,232,.22);
+  --lead:#ee5e23; --dbl:#c21f55; --ctr:#01a2c5; --har:#2f66c4; --riff:#9e71fd;
+  --serif:'Instrument Serif','Noto Serif SC','Songti SC',Georgia,serif;
+  --zh:'Noto Serif SC','Songti SC','SimSun',serif;
+  --ui:'Inter Tight','Microsoft YaHei UI','PingFang SC',system-ui,sans-serif;
+  --mono:'JetBrains Mono',Consolas,'Microsoft YaHei UI',monospace;
+  --name:var(--zh); --ease:cubic-bezier(.2,.8,.2,1); --lvl:0;
+}
+html[lang=en]{--name:var(--ui)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,textarea,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:4px}
+[hidden]{display:none!important}
+.mono{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase}
+.dim{color:var(--ink3)}
+.aura{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.aura i{position:absolute;width:62vmax;height:62vmax;border-radius:50%;filter:blur(120px);opacity:calc(.12 + var(--lvl)*.2);will-change:transform}
+.aura i:first-child{background:var(--riff);left:-24vmax;top:-28vmax;animation:drift1 44s ease-in-out infinite alternate}
+.aura i:last-child{background:var(--lead);right:-24vmax;bottom:-30vmax;animation:drift2 56s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(22vmax,14vmax) scale(1.16)}}
+@keyframes drift2{to{transform:translate(-18vmax,-12vmax) scale(.9)}}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.09;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+.view{position:relative;z-index:2;transition:opacity .45s var(--ease),transform .6s var(--ease)}
+.view.out{opacity:0;transform:translateY(14px)}
+.lang{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:2px;vertical-align:middle}
+.lang button{padding:3px 10px;border-radius:999px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--ink2);transition:background .25s,color .25s}
+.lang button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.lvl{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:2px;vertical-align:middle;margin-right:8px}
+.lvl button{padding:3px 10px;border-radius:999px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--ink2);transition:background .25s,color .25s}
+.lvl button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+/* 两个分区之间的切换 */
+.sections{display:inline-flex;border:1px solid var(--line2);border-radius:999px;padding:2px}
+.sections a{padding:5px 14px;border-radius:999px;font-size:12.5px;color:var(--ink2);transition:background .25s,color .25s;white-space:nowrap}
+.sections a:hover{color:var(--ink)}
+.sections a[aria-current=page]{background:var(--ink);color:var(--bg)}
+
+/* ---------- 目录 ---------- */
+#home{min-height:100vh;padding:22px clamp(18px,5vw,76px) 70px}
+.top{display:flex;gap:18px;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.top .l,.top .r{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.hero{padding:clamp(30px,6.5vh,84px) 0 clamp(22px,4vh,44px);display:grid;gap:22px}
+.kicker{color:var(--riff)}
+.title{font-family:var(--zh);font-weight:900;font-size:clamp(52px,11vw,188px);line-height:.94;letter-spacing:-.025em}
+.title .ln{display:block;overflow:hidden;padding-bottom:.06em}
+.title .ln>b{display:inline-block;font-weight:inherit;transform:translateY(108%);animation:rise 1.1s var(--ease) forwards}
+.title .ln:nth-child(2)>b{animation-delay:.12s}
+.title em{font-style:normal;color:var(--riff)}
+html[lang=en] .title{font-family:var(--serif);font-weight:400;font-size:clamp(48px,10vw,170px);line-height:.9;letter-spacing:-.03em}
+html[lang=en] .title em{font-style:italic}
+@keyframes rise{to{transform:none}}
+.lede{max-width:46em;font-size:clamp(15px,1.25vw,18px);line-height:1.75;color:var(--ink2)}
+.how{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:8px 22px;color:var(--ink2);font-size:13px}
+.how kbd,.keys kbd{font-family:var(--mono);font-size:10.5px;color:var(--ink);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;margin-right:6px}
+.songs{list-style:none;padding:0;border-top:1px solid var(--line2)}
+.songs li{border-bottom:1px solid var(--line);opacity:0;transform:translateY(18px);animation:rowin .8s var(--ease) forwards}
+.songs li.sep{padding:26px 6px 10px;border-bottom:1px solid var(--line2);animation-duration:.5s}
+.songs li.sep b{font-family:var(--name);font-weight:500;font-size:17px}
+.songs li.sep span{margin-left:12px;color:var(--ink3);font-size:13px}
+@keyframes rowin{to{opacity:1;transform:none}}
+.song{width:100%;text-align:left;display:grid;grid-template-columns:54px minmax(0,1fr) auto 216px;gap:clamp(12px,2.4vw,34px);align-items:center;padding:20px 6px;
+  transition:padding .55s var(--ease),background .45s,opacity .35s}
+.song:hover,.song:focus-visible{padding-left:26px;background:linear-gradient(90deg,rgba(243,239,232,.06),transparent 72%)}
+.songs:hover .song:not(:hover){opacity:.42}
+.song .no{font-family:var(--mono);font-size:12px;color:var(--ink3)}
+.song h3{font-family:var(--serif);font-weight:400;font-size:clamp(28px,4.6vw,70px);line-height:1;letter-spacing:-.012em;overflow-wrap:anywhere}
+html[lang=zh-CN] .song h3{font-family:var(--serif)}
+.song .meta{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.song .state{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right}
+.pill{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;padding:4px 9px;border-radius:999px;border:1px solid var(--line2);color:var(--ink2);white-space:nowrap}
+.pill.ok{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.pill.warn{border-color:#ff8f6b;color:#ff8f6b}
+.song canvas{width:216px;height:74px;justify-self:end;transition:transform .9s var(--ease)}
+.song:hover canvas{transform:scale(1.06)}
+.empty{padding:44px 6px;color:var(--ink2);font-size:16px;line-height:1.8}
+.foot{margin-top:34px;line-height:1.9;text-transform:none;letter-spacing:.02em}
+
+/* ---------- 对比页 ---------- */
+#room{display:grid;grid-template-columns:316px minmax(0,1fr);height:100vh}
+.side{padding:18px 22px 24px;border-right:1px solid var(--line);overflow:auto;display:flex;flex-direction:column;gap:15px;background:var(--panel);backdrop-filter:blur(16px)}
+.side>*{flex-shrink:0}
+.sideTop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.back{color:var(--ink2);padding:6px 0;transition:color .25s,transform .4s var(--ease)}
+.back:hover{color:var(--ink);transform:translateX(-4px)}
+.edTitle{font-family:var(--serif);font-weight:400;font-size:clamp(30px,2.9vw,46px);line-height:1;letter-spacing:-.01em;overflow-wrap:anywhere}
+.group h4{color:var(--ink3);margin-bottom:8px;font-weight:400}
+.picks{display:flex;flex-wrap:wrap;gap:6px}
+.pick{padding:7px 14px;border-radius:999px;border:1px solid var(--line2);font-family:var(--name);font-weight:500;font-size:14.5px;color:var(--ink2);transition:background .25s,color .25s,border-color .25s}
+.pick:hover{border-color:var(--ink);color:var(--ink)}
+.pick[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{border:1px solid var(--line);border-radius:14px;background:rgba(13,13,14,.82);padding:13px 14px;display:grid;gap:10px;min-width:0}
+.card>*{min-width:0}
+.card h3{font-family:var(--name);font-weight:500;font-size:19px;line-height:1.25}
+.card .sub{font-size:12.5px;color:var(--ink2);line-height:1.6}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tags .pill{text-transform:none;letter-spacing:.02em;font-family:var(--ui);font-size:11.5px;padding:3px 9px;white-space:normal;border-radius:10px;line-height:1.45}
+.rule{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:baseline}
+.rule b{font-family:var(--name);font-weight:500;font-size:13.5px}
+.rule i{font-style:normal;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.rule svg{grid-column:1/-1;width:100%;height:22px;display:block;overflow:visible}
+.rule p{grid-column:1/-1;font-size:11.5px;color:var(--ink3);line-height:1.5}
+.marks{display:flex;gap:6px}
+.mark{flex:1;padding:8px 6px;border-radius:999px;border:1px solid var(--line2);font-size:12.5px;color:var(--ink2);transition:background .25s,color .25s,border-color .25s}
+.mark:hover{border-color:var(--ink);color:var(--ink)}
+.mark[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+textarea{width:100%;min-height:64px;resize:vertical;background:rgba(243,239,232,.04);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.6}
+textarea:focus{outline:none;border-color:var(--line2)}
+#saveState{min-height:17px;text-transform:none;letter-spacing:.02em}
+.keys{list-style:none;padding:0;display:grid;gap:5px;font-size:12.5px;color:var(--ink2)}
+.legendRow{display:flex;gap:9px;align-items:center;font-size:12.5px;color:var(--ink2)}
+.legendRow canvas{width:34px;height:16px;flex:none;border-radius:3px}
+.fnLegend{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink2)}
+.fnLegend li{display:flex;gap:6px;align-items:flex-end}
+.fnLegend u{display:block;width:10px;border-radius:2px 2px 0 0}
+
+.stage{display:flex;flex-direction:column;min-width:0;height:100vh}
+.lanes{position:relative;flex:1;min-height:0;overflow:hidden}
+.heads{position:absolute;left:0;top:0;bottom:0;width:206px;z-index:2;border-right:1px solid var(--line);overflow:hidden}
+.head{position:absolute;left:0;right:0;display:flex;align-items:center;gap:8px;padding:0 10px 0 16px;text-align:left;transition:opacity .3s,background .3s}
+button.head:hover{background:rgba(243,239,232,.045)}
+.head[aria-pressed=true]{background:rgba(243,239,232,.09)}
+.head[aria-pressed=true]::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 3px 3px 0;background:var(--ink)}
+.head .k{flex:none;width:20px;height:20px;border-radius:6px;border:1px solid var(--line2);display:grid;place-items:center;font:500 10.5px var(--mono);color:var(--ink3)}
+.head[aria-pressed=true] .k{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.head .tx{min-width:0;display:block}
+.head .nm{display:block;font-family:var(--name);font-weight:500;font-size:14.5px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head .en{display:block;font-size:10.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.head .dot{margin-left:auto;flex:none;width:8px;height:8px;border-radius:50%}
+.head .dot.ok{background:var(--ink)}
+.head .dot.doubt{border:1.5px solid var(--ink)}
+.head .dot.bad{background:#ff8f6b}
+.head.grp{align-items:flex-end;padding-bottom:5px;color:var(--ink3);pointer-events:none}
+.head.small .nm{font-size:12.5px;color:var(--ink2)}
+.head.small .en{display:none}
+.head .solo{margin-left:auto;flex:none;width:20px;height:20px;border-radius:50%;border:1px solid var(--line2);color:var(--ink2);font:500 9px var(--mono)}
+.head .solo[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.heads.tight .head .en{display:none}
+.heads.tight .head .nm{font-size:12.5px}
+#tl{position:absolute;left:206px;top:0;width:calc(100% - 206px);height:100%;display:block;touch-action:none;cursor:pointer}
+/* 放大缩小放在时间尺的右端，离时间线近，也不占底栏的地方 */
+.zoomBox{position:absolute;right:0;top:0;height:29px;z-index:3;display:flex;gap:10px;align-items:center;padding:0 14px 0 34px;background:linear-gradient(90deg,transparent,rgba(13,13,14,.94) 26%)}
+.zoomBox .chip{padding:2px 10px;font-size:11.5px}
+.zoomBox input[type=range]{width:96px}
+.tip{position:absolute;z-index:6;pointer-events:none;background:#1a1a1c;border:1px solid var(--line2);border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.55;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.tip b{font-family:var(--name);font-weight:500;font-size:13px}
+.tip i{font-style:normal;color:var(--ink2)}
+
+.dock{position:relative;z-index:8;display:flex;align-items:center;gap:10px 12px;padding:11px 18px;border-top:1px solid var(--line);background:var(--panel);backdrop-filter:blur(16px);flex-wrap:wrap}
+.play{width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;transition:transform .35s var(--ease)}
+.play:hover{transform:scale(1.08)}
+.play svg{width:16px;height:16px;fill:currentColor}
+.clock{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;min-width:92px}
+.chip{padding:6px 12px;border-radius:999px;border:1px solid var(--line2);font-size:12.5px;color:var(--ink2);display:flex;gap:7px;align-items:center;white-space:nowrap;transition:border-color .25s,color .25s,background .25s}
+.chip:hover{border-color:var(--ink);color:var(--ink)}
+.chip[aria-pressed=true]{background:rgba(243,239,232,.12);color:var(--ink);border-color:var(--line2)}
+.chip:disabled{opacity:.35;cursor:default}
+.chip kbd{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.listen{font-size:12.5px;color:var(--ink2);max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.listen b{font-family:var(--name);font-weight:500;color:var(--ink)}
+.grow{flex:1}
+input[type=range]{-webkit-appearance:none;appearance:none;width:110px;height:2px;background:var(--line2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--ink);cursor:pointer}
+.menuWrap{position:relative}
+#outBtn span{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.menu{position:absolute;bottom:calc(100% + 10px);right:0;z-index:12;min-width:280px;max-width:380px;background:#1a1a1c;border:1px solid var(--line2);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.menu button{display:flex;gap:10px;align-items:baseline;width:100%;text-align:left;padding:8px 11px;border-radius:9px;font-size:13px;color:var(--ink2)}
+.menu button:hover{background:rgba(243,239,232,.08);color:var(--ink)}
+.menu button[aria-checked=true]{color:var(--ink)}
+.menu button i{font-style:normal;width:12px;color:var(--lead)}
+.menu p{padding:8px 11px;font-size:12px;line-height:1.6;color:var(--ink3)}
+.toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);z-index:20;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:13px;box-shadow:0 14px 40px rgba(0,0,0,.5);max-width:86vw}
+
+@media (max-width:1080px){
+  #room{grid-template-columns:250px minmax(0,1fr)}
+  .side{padding:16px 16px 20px}
+  .song{grid-template-columns:34px minmax(0,1fr) 150px}
+  .song .state{display:none}
+  .song canvas{width:150px;height:56px}
+}
+@media (max-width:760px){
+  #room{grid-template-columns:1fr;height:auto}
+  .side{border-right:0;border-bottom:1px solid var(--line)}
+  .stage{height:92vh}
+  .heads{width:132px}
+  #tl{left:132px;width:calc(100% - 132px)}
+}
+@media (prefers-reduced-motion:reduce){
+  .aura i,.title .ln>b,.songs li{animation:none}
+  .title .ln>b{transform:none}
+  .songs li{opacity:1;transform:none}
+  *{transition-duration:.01ms!important}
+}
+/* 演示版：“刷新”要本机跑脚本，藏起来 */
+#refresh{display:none!important}
+</style>
+</head>
+<body>
+<div class="aura" aria-hidden="true"><i></i><i></i></div>
+<div class="grain" aria-hidden="true"></div>
+
+<main id="home" class="view">
+  <header class="top">
+    <span class="l"><span class="mono">FN Studio</span>
+      <nav class="sections" data-t-aria-label="secAria"><a href="./" data-t="secLabels"></a><a href="regen.html" aria-current="page" data-t="secRegen"></a></nav></span>
+    <span class="r"><span class="mono dim" id="homeCount"></span>
+      <button class="chip" id="refresh" data-t-title="refreshTip"><span id="refreshLabel"></span></button>
+      <span class="lvl" role="group" data-t-title="levelTip"><button data-level="1" data-t="level1">一级</button><button data-level="2" data-t="level2">二级</button></span><span class="lang" role="group" aria-label="Language"><button data-lang="zh">中</button><button data-lang="en">EN</button></span></span>
+  </header>
+  <section class="hero">
+    <p class="mono kicker" data-t="kicker"></p>
+    <h1 class="title" data-t-html="heroTitle" data-t-aria-label="docTitle"></h1>
+    <p class="lede" data-t="lede"></p>
+    <ul class="how" id="how"></ul>
+  </section>
+  <ol class="songs" id="songs"></ol>
+  <p class="foot mono dim" id="foot"></p>
+</main>
+
+<main id="room" class="view" hidden>
+  <aside class="side">
+    <div class="sideTop">
+      <button class="back mono" id="back" data-t="back"></button>
+      <span class="lvl" role="group" data-t-title="levelTip"><button data-level="1" data-t="level1">一级</button><button data-level="2" data-t="level2">二级</button></span><span class="lang" role="group" aria-label="Language"><button data-lang="zh">中</button><button data-lang="en">EN</button></span>
+    </div>
+    <div>
+      <p class="mono dim" id="rKicker"></p>
+      <h2 class="edTitle" id="rTitle"></h2>
+      <p class="mono dim" id="rMeta" style="margin-top:8px"></p>
+    </div>
+    <div class="group">
+      <h4 class="mono" data-t="pickHead"></h4>
+      <div class="picks" id="picks"></div>
+    </div>
+    <div class="group" id="showBox">
+      <h4 class="mono" data-t="showHead"></h4>
+      <div class="picks">
+        <button class="chip" id="moreBtn" aria-pressed="false" data-t-title="moreTip"></button>
+        <button class="chip" id="stemsBtn" aria-pressed="false" data-t="stemsBtn" data-t-title="stemsTip"></button>
+      </div>
+    </div>
+    <div class="card" id="card"></div>
+    <div class="group" id="reviewBox">
+      <h4 class="mono" data-t="markHead"></h4>
+      <div class="marks" id="marks"></div>
+      <textarea id="note" maxlength="20000" data-t-placeholder="notePh" style="margin-top:8px"></textarea>
+      <p class="mono dim" id="saveState" role="status"></p>
+    </div>
+    <div class="group">
+      <h4 class="mono" data-t="legendHead"></h4>
+      <div style="display:grid;gap:7px">
+        <div class="legendRow"><canvas id="lgRest" width="68" height="32"></canvas><span data-t="legendRest"></span></div>
+        <div class="legendRow"><canvas id="lgViol" width="68" height="32"></canvas><span data-t="legendViol"></span></div>
+        <ul class="fnLegend" id="fnLegend"></ul>
+      </div>
+    </div>
+    <div class="group">
+      <h4 class="mono" data-t="keysHead"></h4>
+      <ul class="keys" id="keys"></ul>
+    </div>
+  </aside>
+  <section class="stage">
+    <div class="lanes" id="lanes">
+      <div class="heads" id="heads"></div>
+      <canvas id="tl" data-t-aria-label="tlAria"></canvas>
+      <div class="zoomBox"><button class="chip" id="fit" data-t="fit" data-t-title="fitTip"></button><input type="range" id="zoom" min="0" max="1000" value="0" data-t-aria-label="zoomAria"></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <div class="dock">
+      <button class="play" id="play" data-t-aria-label="playAria"><svg viewBox="0 0 16 16"><path id="playIcon" d="M3 1.5v13l11-6.5z"/></svg></button>
+      <span class="clock" id="clock">0:00 / 0:00</span>
+      <button class="chip" id="retBtn" aria-pressed="false" data-t="retBtn" data-t-title="retTip"></button>
+      <span class="listen" id="listen"></span>
+      <button class="chip" id="ctxBtn" aria-pressed="true" data-t-title="ctxTip"><span data-t="ctxBtn"></span> <kbd>C</kbd></button>
+      <button class="chip" id="abBtn" data-t-title="abTip"><span data-t="abBtn"></span> <kbd>Tab</kbd></button>
+      <button class="chip" id="prevRest" data-t-title="prevRestTip"><span data-t="prevRest"></span> <kbd>P</kbd></button>
+      <button class="chip" id="nextRest" data-t-title="nextRestTip"><span data-t="nextRest"></span> <kbd>N</kbd></button>
+      <button class="chip" id="loopBtn" aria-pressed="false" data-t-title="loopTip"><span data-t="loopBtn"></span> <kbd>L</kbd></button>
+      <span class="grow"></span>
+      <div class="menuWrap">
+        <button class="chip" id="outBtn" aria-haspopup="true" aria-expanded="false" data-t-title="outTip"><span id="outLabel"></span></button>
+        <div class="menu" id="outMenu" role="menu" hidden></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden role="status"></div>
+<script src="demo.js"></script>
+<script src="regen.js"></script>
+</body>
+</html>

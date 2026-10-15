@@ -9,6 +9,7 @@
 - 曲目表里标 ♪ 的 6 首可以播放（MoisesDB 曲目表第 5 到第 10 首），其余歌只有标注和波形。
 - 可以在页面上试着改标记，但不会保存，刷新就恢复原样。
 - 重新识别、改网格、对齐模式只在本机版里有。
+- 第二个分区“重生成结果”只放了 Suno 分轨的第一首（放克）：原曲、原分轨和 ACE-Step 重生成的版本放在一起对比着听。听感标记可以点，但不会保存。
 
 ## Demo (English)
 
@@ -18,4 +19,4 @@ A static demo of a beat-level voice-function annotation tool for multitrack musi
 
 - Audio and stems are from **MoisesDB** (Pereira et al., *MoisesDB: A Dataset for Source Separation Beyond 4-Stems*, ISMIR 2023), licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). The audio here was re-encoded to Opus at 96 kbps; nothing else was changed.
 - The labels and waveform data in this repository are released under the same license, [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), for non-commercial research use.
-- The Suno collection shows labels and waveforms only; no Suno audio is included.
+- The Suno collection in the label page shows labels and waveforms only. The regeneration page includes one Suno song (Funk): the Suno-generated mix and stems, plus stems regenerated with ACE-Step 1.5.
